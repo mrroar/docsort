@@ -70,11 +70,11 @@ def tool(name: str, description: str):
 def read_document(path: Path) -> str:
     if path.suffix.lower() == ".pdf":
         try:
-            import fitz  # pymupdf
-            with fitz.open(path) as doc:
+            import pymupdf
+            with pymupdf.open(path) as doc:
                 text = "\n".join(page.get_text() for page in doc)
         except ImportError:
-            return "[FEHLER] pymupdf ist nicht installiert: pip3 install pymupdf"
+            return "[FEHLER] pymupdf ist nicht installiert: pip install pymupdf"
         if not text.strip():
             return "[WARNUNG] PDF enthaelt keinen Text – vermutlich ein Scan. OCR noetig (ocrmypdf)."
         return text

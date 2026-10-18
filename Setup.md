@@ -62,13 +62,26 @@ ollama pull llama3.2:3b
 
 > Beide laden und danach per `--model` umschaltbar – gut für einen späteren Vergleich.
 
-## Schritt 5: Python-Abhängigkeit installieren
+## Schritt 5: Virtuelle Umgebung + Python-Abhängigkeit
 
 ```bash
-pip3 install pymupdf
+# Virtuelle Umgebung anlegen (einmalig, liegt im Projektordner)
+python3 -m venv .venv
+
+# Umgebung aktivieren – in JEDEM neuen Terminal vor der Nutzung
+source .venv/bin/activate
+
+# pymupdf NUR in der Umgebung installieren
+pip install pymupdf
 ```
 
-(Für Text-Extraktion aus PDFs. Für eingescannte PDFs zusätzlich optional: `brew install ocrmypdf`.)
+> **Warum venv?** Ohne Umgebung landet `pip3 install` global im System-Python – Pakete verschiedener Projekte kollidieren, und macOS-Updates können Installationen zerschießen. Die venv kapselt alles Projektlokale im Ordner `.venv/`.
+>
+> **Alltagstipps:** Nach dem Aktivieren steht im Prompt `(.venv)`. Verlassen per `deactivate`. Neues Terminal = erneut `source .venv/bin/activate` vor jedem Lauf.
+>
+> Hinweis: In der aktivierten Umgebung heißt der Befehl `pip` (nicht `pip3`) und `python` (nicht `python3`) – beide zeigen auf die Umgebung.
+
+(Für Text-Extraktion aus PDFs. Für eingescannte PDFs zusätzlich optional: `brew install ocrmypdf` – das ist ein eigenständiges Programm und gehört nicht in die venv.)
 
 ## Schritt 6: Ordner für Testdaten anlegen
 
@@ -81,6 +94,9 @@ mkdir input
 ## Schritt 7: Erster Testlauf
 
 ```bash
+# falls noch nicht aktiv:
+source .venv/bin/activate
+
 python3 docsort.py input/ --dry-run
 ```
 
@@ -145,5 +161,6 @@ Laufzeitdaten (`logs/`, `archiv/`, `input/`) nicht committen – in `.gitignore`
 logs/
 archiv/
 input/
+.venv/
 __pycache__/
 ```
