@@ -218,5 +218,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-archiv/kundigung/Daten ändern - GEZ - Rundfunkbeitrag-ocr.pdf
-input/Daten ändern - GEZ - Rundfunkbeitrag-ocr.pdf
+
+# Laufzeitdaten – nicht versionieren
+logs/
+input/
+archiv/
+
+# Python
+.venv/
+__pycache__/
+
+# macOS
+.DS_Store
