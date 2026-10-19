@@ -88,8 +88,8 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
 ### CAT-05: Mile
 - id: mile
 - target_path: `Mile/<Unterordner>`
-- match: Absender/Kontext = Mile; Zuordnung per Subtyp:
-  - ärztliche Schadenunterlagen → `Arzt`
+- match: Absender/Kontext = Mile (der Hund), inkl. Tierarzt-Rechnungen
+  - Tierarzt/ärztliche Behandlung -> `Arzt`
   - Kfz-Haftpflicht WGV → `WGV Haftpflicht`
   - Operationskostenversicherung → `R-u-V-Operationskostenversicherung`
 
@@ -111,6 +111,7 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
 - id: medical
 - target_path: `Arztsachen/<Unterordner>`
 - match: Arztbriefe, Atteste, Befunde, Patientenverfügungen
+- exclude: Tierarzt-/Tierbehandlung (Patient ist ein Tier) -> CAT-05 Mile/Arzt
 - routing:
   - Patientenverfügung Daniel → `Patientenverfuegung-Daniel`
   - Patientenverfügung Tabitha → `Patientenverfuegung-Tabitha`
