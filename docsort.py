@@ -21,10 +21,14 @@ Projektlayout (das Skript legt fehlende Dateien/Ordner beim ersten Start an):
     └── (Ablage-Ordner liegen ausserhalb, siehe config.toml)
 
 Aufruf:
-    python3 docsort.py                    # liest Automator-Input der Ablage
+    python3 docsort.py                    # liest Automator-Output der Ablage
     python3 docsort.py --dry-run         # kopieren statt verschieben
     python3 docsort.py mein_test_ordner/  # anderer Eingangsordner
     python3 docsort.py --base-dir /pfad  # Ablage-Stamm ueberschreiben
+
+Pipeline:
+    Automator-Input  -> Mac-Automator (OCR-Scan) ->  Automator-Output
+    Automator-Output -> docsort (Klassifizierung) -> Zielordner der Knowledge
 """
 
 from __future__ import annotations
@@ -49,8 +53,10 @@ CONFIG_FILE = SCRIPT_DIR / "config.toml"
 
 # Fallback, falls keine config.toml existiert
 DEFAULT_BASE_DIR = Path.home() / "Documents/SynologyDrive/wolke7-Documents/private/Digitaler-Heim-Ordner"
-DEFAULT_INPUT_SUBDIR = "Automator-Input"
-DEFAULT_OUTPUT_SUBDIR = "Automator-Output"
+# WICHTIG: docsort liest aus Automator-Output (dorthin liefert der Mac-Automator
+# die OCR-gescannten PDFs). Automator-Input ist NUR Eingang des OCR-Workflows.
+DEFAULT_INPUT_SUBDIR = "Automator-Output"
+DEFAULT_OCR_INPUT_SUBDIR = "Automator-Input"
 DEFAULT_LOG_SUBDIR = "Automator-log"
 
 CONFIDENCE_THRESHOLD = 0.7  # Rule P4: darunter manuelle Klaerung
@@ -62,8 +68,8 @@ def load_config(override_base: str | None) -> dict:
     """Liest config.toml (falls vorhanden). Override per CLI gewinnt."""
     cfg = {
         "base_dir": str(DEFAULT_BASE_DIR),
-        "input_subdir": DEFAULT_INPUT_SUBDIR,
-        "output_subdir": DEFAULT_OUTPUT_SUBDIR,
+        "input_subdir": DEFAULT_INPUT_SUBDIR,        # = Automator-Output
+        "ocr_input_subdir": DEFAULT_OCR_INPUT_SUBDIR,  # = Automator-Input
         "log_subdir": DEFAULT_LOG_SUBDIR,
     }
     if CONFIG_FILE.exists():
@@ -208,7 +214,9 @@ def bootstrap(cfg: dict) -> None:
         print(f"Fehler: Ablage-Stamm existiert nicht: {base}", file=sys.stderr)
         print("Hinweis: config.toml pruefen oder --base-dir angeben.", file=sys.stderr)
         sys.exit(1)
-    for sub in (cfg["input_subdir"], cfg["output_subdir"], cfg["log_subdir"]):
+    # Bootstrap aller drei System-Ordner (falls der Mac-Automator sie noch
+    # nicht angelegt hat): OCR-Eingang, OCR-Ausgang (= docsort-Eingang), Log
+    for sub in (cfg["ocr_input_subdir"], cfg["input_subdir"], cfg["log_subdir"]):
         d = base / sub
         if not d.exists():
             d.mkdir(parents=True, exist_ok=True)
@@ -354,7 +362,7 @@ def process_all(input_dir: Path, cfg: dict, model: str, dry_run: bool) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Mini-Harness: Dokumente sortieren")
     parser.add_argument("input", type=Path, nargs="?",
-                        help="Eingangsordner (Standard: Automator-Input der Ablage)")
+                        help="Eingangsordner (Standard: Automator-Output der Ablage)")
     parser.add_argument("--base-dir", default=None,
                         help="Ablage-Stamm ueberschreiben (sonst config.toml)")
     parser.add_argument("--model", default="llama3.1:8b", help="Ollama-Modell")
