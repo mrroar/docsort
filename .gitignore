@@ -223,6 +223,7 @@ __marimo__/
 logs/
 input/
 archiv/
+config.toml
 
 # Python
 .venv/
