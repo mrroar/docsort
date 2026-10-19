@@ -133,7 +133,7 @@ def ask_model(prompt: str, model: str) -> dict:
         headers={"Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=300) as resp:
             data = json.loads(resp.read())
     except urllib.error.URLError as e:
         raise ConnectionError(f"Ollama nicht erreichbar ({e}). Laeuft 'ollama serve'?")
