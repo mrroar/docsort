@@ -88,9 +88,9 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
 ### CAT-05: Mile
 - id: mile
 - target_path: `Mile/<Unterordner>`
-- match: Absender/Kontext = Mile (der Hund), inkl. Tierarzt-Rechnungen
-  - Tierarzt/ärztliche Behandlung -> `Arzt`
-  - Kfz-Haftpflicht WGV → `WGV Haftpflicht`
+- match: Absender/Kontext = Mile (der Hund); Subtypen:
+  - Tier-Arzt, Tierarzt/ärztliche Behandlung, Medikamente -> `Arzt`
+  - Hunde-Haftpflicht WGV → `WGV Haftpflicht`
   - Operationskostenversicherung → `R-u-V-Operationskostenversicherung`
 
 ### CAT-06: Auto
