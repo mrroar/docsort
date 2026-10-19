@@ -1,0 +1,11 @@
+# config.example.toml - Vorlage: nach config.toml kopieren und anpassen.
+# config.toml NICHT committen (.gitignore), sie enthaelt lokale Pfade.
+
+# Ablage-Stamm: hier liegen alle Zielordner aus knowledge/categories.md
+# und die System-Ordner der Pipeline (Automator-Input/Output/log).
+base_dir = "/Users/daniel/Documents/SynologyDrive/wolke7-Documents/private/Digitaler-Heim-Ordner"
+
+# System-Ordner der Pipeline (relativ zum Ablage-Stamm)
+input_subdir = "Automator-Input"
+output_subdir = "Automator-Output"
+log_subdir = "Automator-log"

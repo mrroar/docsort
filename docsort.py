@@ -5,26 +5,26 @@ docsort – ein Mini-Harness zur Dokumentenklassifizierung (macOS, Ollama).
 Lernprojekt: Tools, Skills, Knowledge, Guardrails, State und Logging
 in Miniaturform – bewusst ohne Framework.
 
-Projektlayout (das Skript legt fehlende Dateien beim ersten Start selbst an):
+Routing-Wissensbasis: knowledge/categories.md (Taxonomie v3).
+Lokale Pfade (Ablage-Stamm etc.): config.toml (nicht committen).
+
+Projektlayout (das Skript legt fehlende Dateien/Ordner beim ersten Start an):
 
     docsort/
-    ├── docsort.py          <- dieses Skript
+    ├── docsort.py            <- dieses Skript
+    ├── config.toml           <- lokale Konfiguration (NICHT committen)
+    ├── config.example.toml   <- Vorlage (committen)
     ├── skills/
-    │   └── classify.md     <- Skill: Anleitung, WIE klassifiziert wird
+    │   └── classify.md       <- Skill: Anleitung, WIE klassifiziert wird
     ├── knowledge/
-    │   └── categories.md   <- Knowledge: WAS die Kategorien bedeuten
-    ├── logs/
-    │   └── run_*.jsonl    <- State/Logging: ein Eintrag pro Dokument
-    └── input/              <- hier liegen die zu sortierenden Dateien
+    │   └── categories.md     <- Knowledge: WAS die Kategorien bedeuten (v3)
+    └── (Ablage-Ordner liegen ausserhalb, siehe config.toml)
 
 Aufruf:
-    python3 docsort.py input/ --target archiv/ [--dry-run] [--model llama3.1:8b]
-
-Voraussetzungen:
-    brew install ollama && ollama serve
-    ollama pull llama3.1:8b
-    pip3 install pymupdf
-    (optional fuer Scans: brew install ocrmypdf)
+    python3 docsort.py                    # liest Automator-Input der Ablage
+    python3 docsort.py --dry-run         # kopieren statt verschieben
+    python3 docsort.py mein_test_ordner/  # anderer Eingangsordner
+    python3 docsort.py --base-dir /pfad  # Ablage-Stamm ueberschreiben
 """
 
 from __future__ import annotations
@@ -32,31 +32,64 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import re
 import shutil
 import sys
+import urllib.error
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Basiskonfiguration
+# Konfiguration
 # ---------------------------------------------------------------------------
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
-SKILL_FILE = Path(__file__).parent / "skills" / "classify.md"
-KNOWLEDGE_FILE = Path(__file__).parent / "knowledge" / "categories.md"
-LOG_DIR = Path(__file__).parent / "logs"
-CONFIDENCE_THRESHOLD = 0.6  # Guardrail: darunter fragt der Harness den Menschen
+SCRIPT_DIR = Path(__file__).parent
+SKILL_FILE = SCRIPT_DIR / "skills" / "classify.md"
+KNOWLEDGE_FILE = SCRIPT_DIR / "knowledge" / "categories.md"
+CONFIG_FILE = SCRIPT_DIR / "config.toml"
+
+# Fallback, falls keine config.toml existiert
+DEFAULT_BASE_DIR = Path.home() / "Documents/SynologyDrive/wolke7-Documents/private/Digitaler-Heim-Ordner"
+DEFAULT_INPUT_SUBDIR = "Automator-Input"
+DEFAULT_OUTPUT_SUBDIR = "Automator-Output"
+DEFAULT_LOG_SUBDIR = "Automator-log"
+
+CONFIDENCE_THRESHOLD = 0.7  # Rule P4: darunter manuelle Klaerung
 SUPPORTED_SUFFIXES = {".pdf", ".txt", ".md"}
 MAX_CHARS = 6000  # Kontext-Management: Dokumenttext wird hierauf gekuerzt
 
+
+def load_config(override_base: str | None) -> dict:
+    """Liest config.toml (falls vorhanden). Override per CLI gewinnt."""
+    cfg = {
+        "base_dir": str(DEFAULT_BASE_DIR),
+        "input_subdir": DEFAULT_INPUT_SUBDIR,
+        "output_subdir": DEFAULT_OUTPUT_SUBDIR,
+        "log_subdir": DEFAULT_LOG_SUBDIR,
+    }
+    if CONFIG_FILE.exists():
+        try:
+            import tomllib  # Python >= 3.11
+            data = tomllib.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+        except ImportError:
+            data = {}
+            # rudimentaerer Fallback-Parser: nur zeilenweise key = "value"
+            for line in CONFIG_FILE.read_text(encoding="utf-8").splitlines():
+                m = re.match(r'\s*(\w+)\s*=\s*"([^"]+)"', line)
+                if m:
+                    data[m.group(1)] = m.group(2)
+        for key in cfg:
+            if key in data:
+                cfg[key] = str(data[key])
+    if override_base:
+        cfg["base_dir"] = override_base
+    return cfg
+
+
 # ---------------------------------------------------------------------------
 # 1) Tool-Registry
-#    Jedes Tool ist eine Funktion + einer Beschreibung fuer das Modell.
-#    (In dieser Miniatur ruft der Harness die Tools deterministisch auf.
-#    Die Registry zeigt das Muster, das Frameworks fuer dich abstrahieren.)
 # ---------------------------------------------------------------------------
 
 TOOLS: dict[str, dict] = {}
-
 
 def tool(name: str, description: str):
     """Dekorator: registriert eine Funktion als Harness-Tool."""
@@ -64,7 +97,6 @@ def tool(name: str, description: str):
         TOOLS[name] = {"fn": fn, "description": description}
         return fn
     return wrapper
-
 
 @tool("read_document", "Extrahiert Text aus einer Datei (PDF, TXT, MD).")
 def read_document(path: Path) -> str:
@@ -80,30 +112,33 @@ def read_document(path: Path) -> str:
         return text
     return path.read_text(encoding="utf-8", errors="replace")
 
-
-@tool("ask_model", "Stellt eine Klassifikationsfrage an das lokale Ollama-Modell.")
+@tool("ask_model", "Stellt die Routing-Frage an das lokale Ollama-Modell.")
 def ask_model(prompt: str, model: str) -> dict:
     import urllib.request
 
     payload = json.dumps({
         "model": model,
         "stream": False,
-        "format": "json",  # Guardrail: Ollama erwingt JSON-Ausgabe
+        "format": "json",  # Guardrail: Ollama erzwingt JSON-Ausgabe
         "messages": [{"role": "user", "content": prompt}],
     }).encode()
     req = urllib.request.Request(
-        OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"}
+        "http://localhost:11434/api/chat", data=payload,
+        headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        data = json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.URLError as e:
+        raise ConnectionError(f"Ollama nicht erreichbar ({e}). Laeuft 'ollama serve'?")
     return json.loads(data["message"]["content"])  # kann ValueError werfen
 
-
-@tool("move_file", "Verschiebt (dry-run: kopiert) eine Datei in den Zielordner.")
-def move_file(src: Path, category: str, target_root: Path, dry_run: bool) -> Path:
-    dest_dir = target_root / category
-    dest_dir.mkdir(parents=True, exist_ok=True)
+@tool("move_file", "Verschiebt (dry-run: kopiert) eine Datei an den Zielpfad.")
+def move_file(src: Path, dest_dir: Path, dry_run: bool) -> Path:
+    dest_dir.mkdir(parents=True, exist_ok=True)  # mehrstufige Pfade erlaubt
     dest = dest_dir / src.name
+    if dest.exists():
+        raise FileExistsError(f"Ziel existiert bereits: {dest}")
     if dry_run:
         shutil.copy2(src, dest)
     else:
@@ -113,31 +148,35 @@ def move_file(src: Path, category: str, target_root: Path, dry_run: bool) -> Pat
 
 # ---------------------------------------------------------------------------
 # 2) Skills & Knowledge
-#    Beide sind Markdown-Dateien – vom Code getrennt, editierbar,
-#    ohne Programmierkenntnisse anpassbar. Genau das ist der Punkt.
 # ---------------------------------------------------------------------------
 
-SKILL_TEMPLATE = """# Skill: Dokument klassifizieren
+SKILL_TEMPLATE = """# Skill: Dokument klassifizieren und routen
 
-Du klassifizierst ein Dokument in GENAU EINE Kategorie aus der
-Kategorienliste im Knowledge-Abschnitt.
+Du ordnest ein Dokument GENAU EINER Kategorie der Routing-Wissensbasis
+(Kategorien-Definitionen und Matching-Hierarchie) zu und gibst den
+Zielordner an.
 
 Regeln:
-1. Beurteile auf Basis des Dokumentinhalts, nicht des Dateinamens.
-2. Antworte NUR als JSON: {"category": "...", "confidence": 0.0-1.0,
-   "summary": "ein Satz"}
-3. confidence spiegelt deine Sicherheit wider. Bei Unsicherheit ehrlich
+1. Folge der Matching-Hierarchie (Abschnitt 3 der Knowledge): die erste
+   hinreichend konfidente Kategorie gewinnt. Prioritaeten (HOCH) beachten.
+2. Beurteile auf Basis des Dokumentinhalts, nicht des Dateinamens.
+3. Uebernimme target_path NUR aus der Knowledge (mit Subtyp/Ordner-Regeln
+   aus Abschnitt 2). Erfinde keine Pfade.
+4. Bei CAT-07 (receipts-year) und CAT-09 (weg): year = Belegjahr aus dem
+   Dokument (JJJJ). <JJJJ> im target_path bedeutet: dieses Jahr einsetzen.
+5. Antworte NUR als JSON:
+   {"id": "<Kategorie-ID>", "target_path": "<relativer Pfad>",
+    "year": "<JJJJ oder null>", "confidence": 0.0-1.0,
+    "summary": "ein Satz"}
+6. confidence spiegelt deine Sicherheit wider. Bei Unsicherheit ehrlich
    niedrig antworten – niemals erfinden.
-4. Trifft keine Kategorie zu, antworte "unsicher".
+7. Trifft keine Kategorie zu: id = "unsicher", target_path = null.
 """
 
-KNOWLEDGE_TEMPLATE = """# Knowledge: Kategorien
+KNOWLEDGE_MINI_TEMPLATE = """# Knowledge: Kategorien (Platzhalter)
 
-- rechnung: Dokument mit Rechnungsstellung, Betrag, MwSt, Rechnungsnummer
-- vertrag: Vereinbarung zwischen Parteien, Laufzeit, Unterschriften, Klauseln
-- kundigung: Kuendigung eines Vertrags oder Abos durch eine Partei
-- sonstiges: alles andere
-- unsicher: kein eindeutiger Schluss moeglich
+Dies ist ein Platzhalter. Die echte Routing-Wissensbasis (v3) gehoert hierher:
+knowledge/categories.md aus dem docsort-Repo.
 """
 
 
@@ -148,70 +187,113 @@ def load_context() -> str:
     return f"{skill}\n\n{knowledge}"
 
 
-def bootstrap() -> None:
-    """Legt Skill-, Knowledge- und Log-Ordner beim ersten Start an."""
-    for path, template in [
-        (SKILL_FILE, SKILL_TEMPLATE),
-        (KNOWLEDGE_FILE, KNOWLEDGE_TEMPLATE),
-    ]:
+def load_categories() -> list[str]:
+    """Parst alle Kategorie-IDs (- id: ...) aus der Knowledge-Datei.
+    Waechst die Taxonomie, waechst das Harness ohne Codeaenderung mit."""
+    text = KNOWLEDGE_FILE.read_text(encoding="utf-8")
+    return re.findall(r"^- id:\s*(\S+)", text, re.MULTILINE)
+
+
+def bootstrap(cfg: dict) -> None:
+    """Legt Skill-, Knowledge- und Ablage-Systemordner beim ersten Start an."""
+    for path, template in [(SKILL_FILE, SKILL_TEMPLATE),
+                           (KNOWLEDGE_FILE, KNOWLEDGE_MINI_TEMPLATE)]:
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(template, encoding="utf-8")
             print(f"[bootstrap] Vorlage angelegt: {path}")
-    LOG_DIR.mkdir(exist_ok=True)
+
+    base = Path(cfg["base_dir"])
+    if not base.is_dir():
+        print(f"Fehler: Ablage-Stamm existiert nicht: {base}", file=sys.stderr)
+        print("Hinweis: config.toml pruefen oder --base-dir angeben.", file=sys.stderr)
+        sys.exit(1)
+    for sub in (cfg["input_subdir"], cfg["output_subdir"], cfg["log_subdir"]):
+        d = base / sub
+        if not d.exists():
+            d.mkdir(parents=True, exist_ok=True)
+            print(f"[bootstrap] System-Ordner angelegt: {d}")
 
 
 # ---------------------------------------------------------------------------
-# 3) Execution Loop (hier: eine deterministische Pipeline pro Dokument)
-#    Observe -> Think -> Act -> Verify, in Miniatur.
+# 3) Execution Loop: Observe -> Think -> Act -> Verify
 # ---------------------------------------------------------------------------
+
+def parse_confidence(result: dict) -> float:
+    """Guardrail: confidence kann als String ankommen."""
+    try:
+        return float(result.get("confidence", 0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def build_target_path(result: dict) -> str | None:
+    """Setzt <JJJJ> im target_path ein und validiert den Pfad (Rule N3)."""
+    target = result.get("target_path")
+    if not target or not isinstance(target, str):
+        return None
+    year = result.get("year")
+    if "<JJJJ>" in target:
+        if not (isinstance(year, str) and re.fullmatch(r"\d{4}", year)):
+            return None  # Jahr noetig, aber nicht erkannt -> unsicher
+        target = target.replace("<JJJJ>", year)
+    # Guardrails: nur relative Pfade, kein Sprung nach oben, keine Systemordner
+    p = target.strip().strip("/")
+    if not p or ".." in p.split("/") or p.startswith("~"):
+        return None
+    if p.split("/")[0].startswith("Automator-") or p.split("/")[0] == "old-delete":
+        return None
+    return p
+
 
 def classify_document(path: Path, context: str, model: str) -> dict:
     text = TOOLS["read_document"]["fn"](path)[:MAX_CHARS]
     if text.startswith(("[FEHLER", "[WARNUNG")):
-        return {"category": "fehler", "confidence": 0.0, "summary": text}
-
+        return {"id": "fehler", "target_path": None, "year": None,
+                "confidence": 0.0, "summary": text}
     prompt = f"{context}\n\n--- DOKUMENT: {path.name} ---\n{text}"
     try:
-        result = TOOLS["ask_model"]["fn"](prompt, model)
+        return TOOLS["ask_model"]["fn"](prompt, model)
     except ValueError:
-        return {"category": "unsicher", "confidence": 0.0,
-                "summary": "Modell-Antwort war kein gueltiges JSON"}
-    return result
+        return {"id": "unsicher", "target_path": None, "year": None,
+                "confidence": 0.0, "summary": "Modell-Antwort war kein gueltiges JSON"}
 
 
-def verify(result: dict) -> str | None:
+def verify(result: dict, valid_ids: list[str]) -> str | None:
     """Guardrail: Prueft die Modell-Antwort gegen die Regeln."""
-    valid = {"rechnung", "vertrag", "kundigung", "sonstiges", "unsicher"}
-    if result.get("category") not in valid:
+    if result.get("id") not in valid_ids:
         return "unsicher"
     return None
 
 
 def human_in_the_loop(result: dict, path: Path, categories: list[str]) -> dict:
-    """Niedrige Konfidenz -> der Mensch entscheidet (Human-in-the-Loop)."""
+    """Niedrige Konfidenz -> der Mensch entscheidet."""
     print(f"\n  Unsicher bei '{path.name}': "
-          f"{result.get('category')} (Konfidenz {result.get('confidence')})")
+          f"{result.get('id')} (Konfidenz {result.get('confidence')})")
     print("  Zusammenfassung:", result.get("summary", ""))
     for i, cat in enumerate(categories, 1):
         print(f"    {i}) {cat}")
     choice = input("  Ihre Wahl (Enter = unsicher, Datei bleibt liegen): ").strip()
     if choice.isdigit() and 1 <= int(choice) <= len(categories):
-        return {"category": categories[int(choice) - 1], "confidence": 1.0,
+        return {"id": categories[int(choice) - 1], "target_path": None,
+                "year": None, "confidence": 1.0,
                 "summary": "manuell bestaetigt", "manual": True}
-    return {"category": "unsicher", "confidence": 0.0,
-            "summary": "vom Menschen uebersprungen", "manual": True}
+    return {"id": "unsicher", "target_path": None, "year": None,
+            "confidence": 0.0, "summary": "vom Menschen uebersprungen",
+            "manual": True}
 
 
-def process_all(input_dir: Path, target_root: Path, model: str,
-                dry_run: bool) -> None:
-    bootstrap()
+def process_all(input_dir: Path, cfg: dict, model: str, dry_run: bool) -> None:
+    bootstrap(cfg)
     context = load_context()
-    log_path = LOG_DIR / f"run_{datetime.datetime.now():%Y%m%d_%H%M%S}.jsonl"
-    categories = ["rechnung", "vertrag", "kundigung", "sonstiges", "unsicher"]
+    categories = load_categories() + ["unsicher"]
+
+    base = Path(cfg["base_dir"])
+    log_dir = base / cfg["log_subdir"]
+    log_path = log_dir / f"run_{datetime.datetime.now():%Y%m%d_%H%M%S}.jsonl"
 
     files = sorted(p for p in input_dir.iterdir()
-                  if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES)
+                   if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES)
     if not files:
         print(f"Keine passenden Dateien in {input_dir} gefunden.")
         return
@@ -224,27 +306,40 @@ def process_all(input_dir: Path, target_root: Path, model: str,
         print(f"→ {path.name}")
         result = classify_document(path, context, model)
 
-        corrected = verify(result)  # Verify-Schritt
-        if corrected:
-            result["category"] = corrected
+        if verify(result, categories):
+            result["id"] = "unsicher"
+        result["confidence"] = parse_confidence(result)
 
-        if (result.get("confidence", 0) < CONFIDENCE_THRESHOLD
-                and result["category"] != "unsicher"):
+        target_rel = build_target_path(result)
+
+        if (result["confidence"] < CONFIDENCE_THRESHOLD or target_rel is None) \
+                and result["id"] != "unsicher" and not result.get("manual"):
             result = human_in_the_loop(result, path, categories)
+            target_rel = build_target_path(result) if result.get("target_path") else None
+            if result["id"] != "unsicher" and target_rel is None:
+                # manuelle Wahl ohne Pfad: Kategorie-Ordner als Fallback
+                target_rel = result["id"]
 
-        if result["category"] == "unsicher":
-            print("  → unsortiert liegen gelassen")
+        if result["id"] == "unsicher" or target_rel is None:
+            print("  → unsortiert liegen gelassen (Rule P4)")
             dest = None
         else:
-            dest = TOOLS["move_file"]["fn"](path, result["category"],
-                                            target_root, dry_run)
-            print(f"  → {result['category']}: {dest}")
+            try:
+                dest = TOOLS["move_file"]["fn"](path, base / target_rel, dry_run)
+                print(f"  → {result['id']}: {dest}")
+            except (FileExistsError, shutil.Error) as e:
+                print(f"  → [FEHLER] nicht verschoben: {e}")
+                result["summary"] = f"Verschieben fehlgeschlagen: {e}"
+                dest = None
 
-        stats[result["category"]] = stats.get(result["category"], 0) + 1
-        with log_path.open("a", encoding="utf-8") as log:  # Logging/State
+        stats[result["id"]] = stats.get(result["id"], 0) + 1
+        with log_path.open("a", encoding="utf-8") as log:  # Rule P3
             log.write(json.dumps({
-                "file": path.name, **result,
+                "file": path.name,
+                "id": result["id"],
                 "target": str(dest) if dest else None,
+                "confidence": result["confidence"],
+                "summary": result.get("summary", ""),
                 "dry_run": dry_run, "model": model,
             }) + "\n")
 
@@ -258,18 +353,26 @@ def process_all(input_dir: Path, target_root: Path, model: str,
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Mini-Harness: Dokumente sortieren")
-    parser.add_argument("input", type=Path, help="Eingangsordner")
-    parser.add_argument("--target", type=Path, default=Path("archiv"),
-                        help="Zielordner (Standard: archiv/)")
+    parser.add_argument("input", type=Path, nargs="?",
+                        help="Eingangsordner (Standard: Automator-Input der Ablage)")
+    parser.add_argument("--base-dir", default=None,
+                        help="Ablage-Stamm ueberschreiben (sonst config.toml)")
     parser.add_argument("--model", default="llama3.1:8b", help="Ollama-Modell")
     parser.add_argument("--dry-run", action="store_true",
                         help="Kopieren statt Verschieben (Guardrail fuer Tests)")
     args = parser.parse_args()
 
-    if not args.input.is_dir():
-        print(f"Fehler: {args.input} ist kein Verzeichnis.", file=sys.stderr)
+    cfg = load_config(args.base_dir)
+    input_dir = args.input if args.input else Path(cfg["base_dir"]) / cfg["input_subdir"]
+
+    if not input_dir.is_dir():
+        print(f"Fehler: {input_dir} ist kein Verzeichnis.", file=sys.stderr)
         return 1
-    process_all(args.input, args.target, args.model, args.dry_run)
+    try:
+        process_all(input_dir, cfg, args.model, args.dry_run)
+    except ConnectionError as e:
+        print(f"Fehler: {e}", file=sys.stderr)
+        return 1
     return 0
 
 
