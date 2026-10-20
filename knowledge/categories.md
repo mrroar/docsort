@@ -159,7 +159,7 @@ konfidente Kategorie gewinnt:
 1. CAT-08 Patientenverfügung (explizit „Patientenverfügung")
 2. CAT-02 amtliche Urkunden (Original-Dokumentcharakter)
 3. CAT-09 WEG (Absender Verwalter/WEG; nur bei expliziter Übergabe, Jahr extrahieren)
-4. CAT-05 Mile (Absender Mile)
+4. CAT-05 Mile (Betreff ist der Hund Mile)
 5. CAT-04 konkreter Anbieter-Ordner (Absender = gelisteter Anbieter)
 6. CAT-06 Fahrzeug TT/Caddy
 7. CAT-10 dokumentierte Objekte
