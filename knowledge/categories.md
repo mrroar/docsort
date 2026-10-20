@@ -3,8 +3,8 @@ type: taxonomy
 domain: document-filing
 project: Dokumenten Automation
 owner: Daniel Hess
-version: 3
-updated: 2026-10-19
+version: 4
+updated: 2026-10-20
 language: de
 purpose: >
   Routing-Wissensbasis für ein Dokumenten-Automatisierungs-Harness.
@@ -16,16 +16,6 @@ purpose: >
 Dieses File ist die maschinenlesbare Zuordnungsregel für die automatische
 Dokumentenablage. Ein Dokument wird über die Matching-Regeln (Abschnitt 3)
 einer Kategorie zugeordnet und in deren `target_path` abgelegt.
-
-Antworte NUR als JSON mit GENAU diesen Feldern (keine anderen
-   Schluessel, keine deutschen Feldnamen!):
-
-   {"id": "receipts-year", "target_path": "Quittungen etc nach Jahr/2026",
-    "year": "2026", "confidence": 0.9, "summary": "Renteninformation 2026"}
-
-   Das ist ein BEISPIEL fuer das Format. Pruefe jedes Dokument neu und
-   waehle die passende id und den passenden target_path aus der Knowledge.
-   Deine Antwort muss mit "{'id'" beginnen.
 
 ## 1. Pipeline-Konventionen
 
@@ -66,41 +56,36 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
   - Heiratsurkunde → `Heiratsurkunde`
 - priority: HOCH (amtliche Dokumente gewinnen gegen alle anderen Kategorien)
 
-### CAT-03: Banken & Versicherungspolicen
-- id: bank-policies
-- target_path: `Banken und Versicherungsunterlagen_Policen - Keine Auszuege`
-- match: Versicherungspolicen, Versicherungsbedingungen, Bank-Vertragsunterlagen
-- exclude: Kontoauszüge (→ CAT-11 Zeit-WEG-Regel bzw. CAT-07), Police eines
-  Ordners aus CAT-04 (spezifischerer Ordner gewinnt)
-
-### CAT-04: Versicherungen & Arbeitsverträge
+### CAT-03: Verträge & Kündigungen (ehemals CAT-03 + CAT-04)
 - id: contracts
-- target_path: `Versicherungen-Arbeitsvertraege/<Anbieter-Ordner>`
-- match: Ordnerschlüssel in Absender/Inhalt (Fallback: neues Jahr/Brief;
-  dann keine Zuordnung möglich → P4).
-- Anbieter-Ordner:
-  - `Gothaer-Lebensv-Daniel-Binect-ruht` – Gothaer Lebensversicherung Daniel (beitragsfrei, Binect)
-  - `Nuernberger-Lebensv-Tabitha` – Nürnberger Lebensversicherung Tabitha
-  - `Signal Iduna` – Signal Iduna Verträge
-  - `AOK-Daniel` – AOK-Krankenkasse Daniel
-  - `BKK-Tabitha` – BKK-Krankenkasse Tabitha
-  - `TK-Tabitha` – Techniker Krankenkasse Tabitha
-  - `WGV-Auto` – Kfz-Versicherung WGV
-  - `WGV-Haftpflicht-Hausrat` – Haftpflicht/Hausrat WGV
-  - `em-Arbeitsvertrag` – Arbeitsvertrag em (Kanzlei/AG, Unklarheit akzeptiert)
-  - `Cfan-Arbeitsvertrag` – Arbeitsvertrag Cfan
-  - `em-MAG` – MAG-Vertrag em
-  - `em-Metall-Rente-Daniel` – betriebliche Metall-Rente Daniel
-  - `Erbe-Daniel` – Erbschafts-/Nachlassunterlagen Daniel
-- exclude: AOK/BKK/TK-Leistungsabrechnungen oder Attest-Arzt-Dokumente
-  (→ CAT-08, wenn ärztlicher Inhalt dominiert)
+- target_path: `Vertraege-und-Kuendigungen/<Person-Unternehmen>`
+- match: Alle Vertrags- und Kündigungsdokumente: Versicherungsverträge
+  (Leben, Krankheit, Kfz, Haftpflicht, Hausrat), Bankverträge,
+  Arbeitsverträge, MAG-/Tarifverträge, betriebliche Rente,
+  Kündigungen von Bankkonten, Nachlass-/Erbschaftsunterlagen.
+- Unterordner-Regel: benannt nach Versicherungnehmer/Empfänger und
+  Unternehmen, bestehende Ordner weiterverwenden:
+  - `Daniel-Gothaer-Lebensv` – Gothaer Lebensversicherung Daniel
+  - `Tabitha-Nuernberger-Lebensv` – Nürnberger Lebensversicherung Tabitha
+  - `Daniel-Signal-Iduna` / `Tabitha-Signal-Iduna` – Signal Iduna Verträge
+  - `Daniel-AOK` / `Tabitha-BKK` / `Tabitha-TK` – Krankenkassen
+  - `Daniel-WGV-Auto` – Kfz-Versicherung WGV
+  - `Daniel-WGV-Haftpflicht-Hausrat` – Haftpflicht/Hausrat WGV
+  - `Daniel-em-Arbeitsvertrag` – Arbeitsvertrag em
+  - `Daniel-Cfan-Arbeitsvertrag` – Arbeitsvertrag Cfan
+  - `Daniel-em-MAG` – MAG-Vertrag em
+  - `Daniel-em-Metall-Rente` – betriebliche Metall-Rente Daniel
+  - `Daniel-Erbe` – Erbschafts-/Nachlassunterlagen Daniel
+- exclude: AOK/BKK/TK-Leistungsabrechnungen und ärztliche Dokumente
+  (→ CAT-08); Kontoauszüge, Rentenbescheide und -informationen (→ CAT-07 bzw. Jahr-Regel); Kündigungen
+  von Verträgen landen im selben Unterordner wie der Vertrag.
 
 ### CAT-05: Mile
 - id: mile
 - target_path: `Mile/<Unterordner>`
-- match: Kontext = Behandlung von Hund Mile ; Subtypen:
-  - Tier-Arzt, Tierarzt/ärztliche Behandlung, Medikamente -> `Arzt`
-  - Hunde- Haftpflicht WGV → `WGV Haftpflicht`
+- match: Absender/Kontext = Mile; Zuordnung per Subtyp:
+  - ärztliche Schadenunterlagen → `Arzt`
+  - Kfz-Haftpflicht WGV → `WGV Haftpflicht`
   - Operationskostenversicherung → `R-u-V-Operationskostenversicherung`
 
 ### CAT-06: Auto
@@ -130,7 +115,6 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
   - ärztliche Unterlagen Daniel → `Daniel`
   - ärztliche Unterlagen Tabitha → `Tabitha`
 - priority: HOCH bei Patientenverfügungen (dominantes Dokument)
-- exclude: Patient ist der Hund Mile -> CAT-05 Mile
 
 ### CAT-09: WEG (vereinfacht, v3)
 - id: weg
@@ -155,7 +139,6 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
   - `Bosch DIY` – Bosch-Werkzeuge/-Geräte
   - `Segmueller-Alno-Kueche` – Küche Segmüller/Alno
   - `Tamya Alpine A110` – Tamiya Modellauto Alpine A110
-  - `Sonstiges` – Sonstige Anleitungen, Benutzerhandbücher
 
 ### CAT-11: Roter-Ordner (Notfallordner)
 - id: emergency-folder
@@ -174,12 +157,11 @@ konfidente Kategorie gewinnt:
 2. CAT-02 amtliche Urkunden (Original-Dokumentcharakter)
 3. CAT-09 WEG (Absender Verwalter/WEG; nur bei expliziter Übergabe, Jahr extrahieren)
 4. CAT-05 Mile (Betreff ist der Hund Mile)
-5. CAT-04 konkreter Anbieter-Ordner (Absender = gelisteter Anbieter)
-6. CAT-06 Fahrzeug Audi TT / VW Caddy
-7. CAT-10 Dokumentation von Objekte
+5. CAT-03 Verträge & Kündigungen (Absender/Betreff = gelistetes Unternehmen, Unterordner Person-Unternehmen)
+6. CAT-06 Fahrzeug TT/Caddy
+7. CAT-10 dokumentierte Objekte
 8. CAT-11 Roter-Ordner (Notfall-Charakter)
-9. CAT-03 allgemeine Police/Bank-Unterlage und Kündigungen von Bankkonten
-10. CAT-07 allgemeine Quittung, Belege, Informationen (nach Jahr)
+9. CAT-07 allgemeine Quittung (nach Jahr)
 
 ## 4. HKV-Kontenplan (nur Referenz für manuelle ZIP-Sortierung)
 

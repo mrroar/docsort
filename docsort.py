@@ -75,6 +75,22 @@ RESPONSE_SCHEMA = {
     "required": ["id", "target_path", "year", "confidence", "summary"],
 }
 
+
+def build_response_schema() -> dict:
+    """Erzwingt Struktur UND gueltige Werte (Ollama Structured Outputs)."""
+    ids = load_categories() + ["unsicher"]
+    return {
+        "type": "object",
+        "properties": {
+            "id":          {"type": "string", "enum": ids},
+            "target_path": {"type": "string"},
+            "year":        {"type": "string", "pattern": r"^\d{4}$"},
+            "confidence":  {"type": "number"},
+            "summary":     {"type": "string"},
+        },
+        "required": ["id", "target_path", "year", "confidence", "summary"],
+    }
+
 def load_config(override_base: str | None) -> dict:
     """Liest config.toml (falls vorhanden). Override per CLI gewinnt."""
     cfg = {
@@ -136,7 +152,8 @@ def ask_model(prompt: str, model: str) -> dict:
     payload = json.dumps({
         "model": model,
         "stream": False,
-        "format": RESPONSE_SCHEMA,   # <- Schema erzwingt die 5 Felder
+        "format": build_response_schema(),   # <- Schema erzwingt die 5 Felder  
+        "options": {"temperature": 0},
         "messages": [{"role": "user", "content": prompt}],
     }).encode()
     req = urllib.request.Request(
@@ -244,11 +261,14 @@ def bootstrap(cfg: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def parse_confidence(result: dict) -> float:
-    """Guardrail: confidence kann als String ankommen."""
+    """Guardrail: confidence kann String oder Prozentwert sein."""
     try:
-        return float(result.get("confidence", 0))
+        c = float(result.get("confidence", 0))
     except (TypeError, ValueError):
         return 0.0
+    if c > 1.0:
+        c /= 100.0     # Modell antwortet in Prozent (90 -> 0.9)
+    return max(0.0, min(c, 1.0))
 
 
 def build_target_path(result: dict) -> str | None:
@@ -306,11 +326,18 @@ def human_in_the_loop(result: dict, path: Path, categories: list[str]) -> dict:
             "confidence": 0.0, "summary": "vom Menschen uebersprungen",
             "manual": True}
 
+def load_target_stems() -> list[str]:
+    """Parst alle zulaessigen Zielordner-Staemme aus der Knowledge."""
+    text = KNOWLEDGE_FILE.read_text(encoding="utf-8")
+    stems = re.findall(r"^- target_path:\s*`([^`<]+)", text, re.MULTILINE)
+    return [s.strip().rstrip("/") for s in stems]
+
 
 def process_all(input_dir: Path, cfg: dict, model: str, dry_run: bool) -> None:
     bootstrap(cfg)
     context = load_context()
     categories = load_categories() + ["unsicher"]
+    target_stems = load_target_stems()
 
     base = Path(cfg["base_dir"])
     log_dir = base / cfg["log_subdir"]
@@ -333,7 +360,14 @@ def process_all(input_dir: Path, cfg: dict, model: str, dry_run: bool) -> None:
         if verify(result, categories):
             result["raw_response"] = json.dumps(result, ensure_ascii=False)
             result["id"] = "unsicher"
-        result["confidence"] = parse_confidence(result)   # <- wiederherstellen
+        # Guardrail: erfundene Pfade verwerfen (nach ID-Check)
+        tp = (result.get("target_path") or "").strip()
+        if result["id"] != "unsicher" and not any(
+                tp == s or tp.startswith(s + "/") for s in target_stems):
+            result["raw_response"] = result.get("raw_response") or json.dumps(result, ensure_ascii=False)
+            result["id"] = "unsicher"
+            result["target_path"] = None
+        result["confidence"] = parse_confidence(result)
 
         target_rel = build_target_path(result)
 

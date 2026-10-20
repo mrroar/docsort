@@ -21,7 +21,7 @@ Regeln:
    Deine Antwort MUSS mit {"id": beginnen. Das Feld "id" enthaelt GENAU
    eine dieser Kategorie-IDs aus der Knowledge (wortgleich, keine
    eigenen IDs erfinden, kein Datum anhaengen):
-   personal, bank-policies, contracts, mile, auto, receipts-year, medical, 
+   personal, contracts, mile, auto, receipts-year, medical, 
    weg, asset-docs, emergency-folder, unsicher.
 6. confidence spiegelt deine Sicherheit wider. Bei Unsicherheit ehrlich
    niedrig antworten – niemals erfinden.
