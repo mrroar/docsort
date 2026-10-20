@@ -102,7 +102,7 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
 ### CAT-07: Quittungen & Belege nach Jahr
 - id: receipts-year
 - target_path: `Quittungen etc nach Jahr/<JJJJ>`
-- match: alltägliche Quittungen, Kaufbelege, Rechnungen des Konsums/Alltags
+- match: alltägliche Quittungen, Kaufbelege, Rechnungen des Konsums/Alltags, jährliche Bescheide, Auszüge, Renteninformationen, Informationen
 - routing: Jahr des Belegdatums → Ordner `2025` / `2026` / fortlaufend
 - exclude: Kassenzettel/Rechnungen für WEG-Konten (→ CAT-09);
   Belege zu Anschaffungen mit Garantie (→ CAT-10)
@@ -142,6 +142,7 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
   - `Bosch DIY` – Bosch-Werkzeuge/-Geräte
   - `Segmueller-Alno-Kueche` – Küche Segmüller/Alno
   - `Tamya Alpine A110` – Tamiya Modellauto Alpine A110
+  - `Sonstiges` – Sonstige Anleitungen, Benutzerhandbücher
 
 ### CAT-11: Roter-Ordner (Notfallordner)
 - id: emergency-folder
@@ -161,11 +162,11 @@ konfidente Kategorie gewinnt:
 3. CAT-09 WEG (Absender Verwalter/WEG; nur bei expliziter Übergabe, Jahr extrahieren)
 4. CAT-05 Mile (Betreff ist der Hund Mile)
 5. CAT-04 konkreter Anbieter-Ordner (Absender = gelisteter Anbieter)
-6. CAT-06 Fahrzeug TT/Caddy
-7. CAT-10 dokumentierte Objekte
+6. CAT-06 Fahrzeug Audi TT / VW Caddy
+7. CAT-10 Dokumentation von Objekte
 8. CAT-11 Roter-Ordner (Notfall-Charakter)
-9. CAT-03 allgemeine Police/Bank-Unterlage
-10. CAT-07 allgemeine Quittung (nach Jahr)
+9. CAT-03 allgemeine Police/Bank-Unterlage und Kündigungen von Bankkonten
+10. CAT-07 allgemeine Quittung, Belege, Informationen (nach Jahr)
 
 ## 4. HKV-Kontenplan (nur Referenz für manuelle ZIP-Sortierung)
 
