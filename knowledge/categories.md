@@ -117,7 +117,7 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
   - ärztliche Unterlagen Daniel → `Daniel`
   - ärztliche Unterlagen Tabitha → `Tabitha`
 - priority: HOCH bei Patientenverfügungen (dominantes Dokument)
-- exclude: Tierarzt-/Tierbehandlung (Patient ist ein Hund also ein Tier) -> CAT-05 Mile/Arzt
+- exclude: Patient ist der Hund Mile -> CAT-05 Mile
 
 ### CAT-09: WEG (vereinfacht, v3)
 - id: weg
