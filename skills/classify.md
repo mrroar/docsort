@@ -8,7 +8,7 @@ Regeln:
 1. Folge der Matching-Hierarchie (Abschnitt 3 der Knowledge): die erste
    hinreichend konfidente Kategorie gewinnt. Prioritaeten (HOCH) beachten.
 2. Beurteile auf Basis des Dokumentinhalts, nicht des Dateinamens.
-3. Uebernimme target_path NUR aus der Knowledge (mit Subtyp/Ordner-Regeln
+3. Uebernehme target_path NUR aus der Knowledge (mit Subtyp/Ordner-Regeln
    aus Abschnitt 2). Erfinde keine Pfade.
 4. Bei CAT-07 (receipts-year) und CAT-09 (weg): year = Belegjahr aus dem
    Dokument (JJJJ). <JJJJ> im target_path bedeutet: dieses Jahr einsetzen.
@@ -18,7 +18,11 @@ Regeln:
     "year": "2026", "confidence": 0.9, "summary": "Renteninformation 2026"}
    Das ist ein BEISPIEL fuer das Format. Pruefe jedes Dokument neu und
    waehle die passende id und den passenden target_path aus der Knowledge.
-   Deine Antwort muss mit "{'id'" beginnen.
+   Deine Antwort MUSS mit {"id": beginnen. Das Feld "id" enthaelt GENAU
+   eine dieser Kategorie-IDs aus der Knowledge (wortgleich, keine
+   eigenen IDs erfinden, kein Datum anhaengen):
+   personal, bank-policies, contracts, mile, auto, receipts-year, medical, 
+   weg, asset-docs, emergency-folder, unsicher.
 6. confidence spiegelt deine Sicherheit wider. Bei Unsicherheit ehrlich
    niedrig antworten – niemals erfinden.
 7. Trifft keine Kategorie zu: id = "unsicher", target_path = null.

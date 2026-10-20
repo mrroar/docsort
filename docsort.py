@@ -63,6 +63,17 @@ CONFIDENCE_THRESHOLD = 0.7  # Rule P4: darunter manuelle Klaerung
 SUPPORTED_SUFFIXES = {".pdf", ".txt", ".md"}
 MAX_CHARS = 6000  # Kontext-Management: Dokumenttext wird hierauf gekuerzt
 
+RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id":        {"type": "string"},
+        "target_path": {"type": "string"},
+        "year":      {"type": "string"},
+        "confidence": {"type": "number"},
+        "summary":   {"type": "string"},
+    },
+    "required": ["id", "target_path", "year", "confidence", "summary"],
+}
 
 def load_config(override_base: str | None) -> dict:
     """Liest config.toml (falls vorhanden). Override per CLI gewinnt."""
@@ -125,7 +136,7 @@ def ask_model(prompt: str, model: str) -> dict:
     payload = json.dumps({
         "model": model,
         "stream": False,
-        "format": "json",  # Guardrail: Ollama erzwingt JSON-Ausgabe
+        "format": RESPONSE_SCHEMA,   # <- Schema erzwingt die 5 Felder
         "messages": [{"role": "user", "content": prompt}],
     }).encode()
     req = urllib.request.Request(
@@ -137,12 +148,12 @@ def ask_model(prompt: str, model: str) -> dict:
             data = json.loads(resp.read())
     except urllib.error.URLError as e:
         raise ConnectionError(f"Ollama nicht erreichbar ({e}). Laeuft 'ollama serve'?")
-    except TimeoutError:   # <- ergaenzen
+    except TimeoutError:
         raise ConnectionError(
             "Ollama hat innerhalb von 300s nicht geantwortet – "
             "Modell vorwaermen ('ollama run <modell>') oder kleineres Modell "
             "waehlen (--model llama3.2:3b).")
-    return json.loads(data["message"]["content"])  # kann ValueError werfen
+    return json.loads(data["message"]["content"])
 
 @tool("move_file", "Verschiebt (dry-run: kopiert) eine Datei an den Zielpfad.")
 def move_file(src: Path, dest_dir: Path, dry_run: bool) -> Path:
