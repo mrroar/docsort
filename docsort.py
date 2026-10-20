@@ -137,6 +137,11 @@ def ask_model(prompt: str, model: str) -> dict:
             data = json.loads(resp.read())
     except urllib.error.URLError as e:
         raise ConnectionError(f"Ollama nicht erreichbar ({e}). Laeuft 'ollama serve'?")
+    except TimeoutError:   # <- ergaenzen
+        raise ConnectionError(
+            "Ollama hat innerhalb von 300s nicht geantwortet – "
+            "Modell vorwaermen ('ollama run <modell>') oder kleineres Modell "
+            "waehlen (--model llama3.2:3b).")
     return json.loads(data["message"]["content"])  # kann ValueError werfen
 
 @tool("move_file", "Verschiebt (dry-run: kopiert) eine Datei an den Zielpfad.")
@@ -317,6 +322,7 @@ def process_all(input_dir: Path, cfg: dict, model: str, dry_run: bool) -> None:
         if verify(result, categories):
             result["raw_response"] = json.dumps(result, ensure_ascii=False)
             result["id"] = "unsicher"
+        result["confidence"] = parse_confidence(result)   # <- wiederherstellen
 
         target_rel = build_target_path(result)
 
@@ -348,6 +354,7 @@ def process_all(input_dir: Path, cfg: dict, model: str, dry_run: bool) -> None:
                 "target": str(dest) if dest else None,
                 "confidence": result["confidence"],
                 "summary": result.get("summary", ""),
+                "raw_response": result.get("raw_response"),   # <- ergaenzen
                 "dry_run": dry_run, "model": model,
             }) + "\n")
 

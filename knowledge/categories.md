@@ -17,6 +17,16 @@ Dieses File ist die maschinenlesbare Zuordnungsregel für die automatische
 Dokumentenablage. Ein Dokument wird über die Matching-Regeln (Abschnitt 3)
 einer Kategorie zugeordnet und in deren `target_path` abgelegt.
 
+Antworte NUR als JSON mit GENAU diesen Feldern (keine anderen
+   Schluessel, keine deutschen Feldnamen!):
+
+   {"id": "receipts-year", "target_path": "Quittungen etc nach Jahr/2026",
+    "year": "2026", "confidence": 0.9, "summary": "Renteninformation 2026"}
+
+   Das ist ein BEISPIEL fuer das Format. Pruefe jedes Dokument neu und
+   waehle die passende id und den passenden target_path aus der Knowledge.
+   Deine Antwort muss mit "{'id'" beginnen.
+
 ## 1. Pipeline-Konventionen
 
 | Pfad | Rolle |
