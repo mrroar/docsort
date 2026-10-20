@@ -315,7 +315,7 @@ def process_all(input_dir: Path, cfg: dict, model: str, dry_run: bool) -> None:
         result = classify_document(path, context, model)
 
         if verify(result, categories):
-            result["raw_response"] = str(result)  # Modell-Antwort im Protokoll sichtbar
+            result["raw_response"] = json.dumps(result, ensure_ascii=False)
             result["id"] = "unsicher"
 
         target_rel = build_target_path(result)

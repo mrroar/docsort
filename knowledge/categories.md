@@ -102,7 +102,10 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
 ### CAT-07: Quittungen & Belege nach Jahr
 - id: receipts-year
 - target_path: `Quittungen etc nach Jahr/<JJJJ>`
-- match: alltägliche Quittungen, Kaufbelege, Rechnungen des Konsums/Alltags, jährliche Bescheide, Auszüge, Renteninformationen, Informationen
+- match: alltägliche Quittungen, Kaufbelege, Rechnungen des Konsums/Alltags;
+  dazu JAHRESBESCHEIDE mit festem Jahreszyklus: Rentenbescheid und
+  Renteninformation der Deutschen Rentenversicherung (Betreff = Rente,
+  Bescheid/Information der DRV; Zielordner-Jahr = Jahr des Bescheids)
 - routing: Jahr des Belegdatums → Ordner `2025` / `2026` / fortlaufend
 - exclude: Kassenzettel/Rechnungen für WEG-Konten (→ CAT-09);
   Belege zu Anschaffungen mit Garantie (→ CAT-10)
