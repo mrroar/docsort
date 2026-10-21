@@ -77,8 +77,7 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
   - `Daniel-em-Metall-Rente` – betriebliche Metall-Rente Daniel
   - `Daniel-Erbe` – Erbschafts-/Nachlassunterlagen Daniel
 - exclude: AOK/BKK/TK-Leistungsabrechnungen und ärztliche Dokumente
-  (→ CAT-08); Kontoauszüge, Rentenbescheide und -informationen (→ CAT-07 bzw. Jahr-Regel); Kündigungen
-  von Verträgen landen im selben Unterordner wie der Vertrag.
+  (→ CAT-08); Kontoauszüge, Jahresinformationen,  Rentenbescheide und Renteninformationen (→ CAT-07)
 
 ### CAT-05: Mile
 - id: mile
@@ -91,7 +90,10 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
 ### CAT-06: Auto
 - id: auto
 - target_path: `Auto/<Fahrzeug>`
-- match: Dokumente zu Fahrzeugen TT oder Caddy (Werkstatt, Zulassung, TÜV, Rechnungen)
+- match: NUR Dokumente mit eindeutigem Fahrzeugbezug zu TT oder Caddy
+  (Werkstatt, Zulassung, TÜV, Kfz-Rechnungen, Kfz-Versicherung)
+- exclude: Renteninformationen/Rentenbescheide der DRV (→ CAT-07);
+  alle Bescheide ohne Fahrzeugbezug
 - routing: Kennung "TT" → `Auto/TT`, Kennung "Caddy" → `Auto/Caddy`
 
 ### CAT-07: Quittungen & Belege nach Jahr
@@ -153,15 +155,15 @@ Jede Kategorie: `id` (stabil), `name`, `target_path`, `match` (Kriterien),
 Das Harness prüft in dieser Reihenfolge; die erste hinreichend
 konfidente Kategorie gewinnt:
 
-1. CAT-08 Patientenverfügung (explizit „Patientenverfügung")
-2. CAT-02 amtliche Urkunden (Original-Dokumentcharakter)
-3. CAT-09 WEG (Absender Verwalter/WEG; nur bei expliziter Übergabe, Jahr extrahieren)
-4. CAT-05 Mile (Betreff ist der Hund Mile)
-5. CAT-03 Verträge & Kündigungen (Absender/Betreff = gelistetes Unternehmen, Unterordner Person-Unternehmen)
-6. CAT-06 Fahrzeug TT/Caddy
-7. CAT-10 dokumentierte Objekte
-8. CAT-11 Roter-Ordner (Notfall-Charakter)
-9. CAT-07 allgemeine Quittung (nach Jahr)
+1. CAT-07 Quittungen & Belege nach Jahr (inkl. JAHRESBESCHEIDE wie Rentenbescheid/Renteninformation der DRV – zuerst prüfen!)
+2. CAT-08 Patientenverfügung (explizit „Patientenverfügung")
+3. CAT-02 amtliche Urkunden (Original-Dokumentcharakter)
+4. CAT-09 WEG (Absender Verwalter/WEG; nur bei expliziter Übergabe, Jahr extrahieren)
+5. CAT-05 Mile (Betreff ist der Hund Mile)
+6. CAT-03 Verträge & Kündigungen (Absender/Betreff = gelistetes Unternehmen, Unterordner Person-Unternehmen)
+7. CAT-06 Fahrzeug TT/Caddy (nur bei eindeutigem Fahrzeugbezug)
+8. CAT-10 dokumentierte Objekte
+9. CAT-11 Roter-Ordner (Notfall-Charakter)
 
 ## 4. HKV-Kontenplan (nur Referenz für manuelle ZIP-Sortierung)
 
