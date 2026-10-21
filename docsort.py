@@ -325,10 +325,17 @@ def human_in_the_loop(result: dict, path: Path, categories: list[str]) -> dict:
             "manual": True}
 
 def load_target_stems() -> list[str]:
+    """Alle zulaessigen Zielordner-Staemme aus der Knowledge."""
     text = KNOWLEDGE_FILE.read_text(encoding="utf-8")
-    stems = re.findall(r"^\s+folder:\s*(\S+)", text, re.MULTILINE)
-    return [s.rstrip("/").split("/")[0] for s in stems
-            if not s.startswith("(")]  # unsicher hat keinen Ordner
+    stems = []
+    for line in text.splitlines():
+        m = re.match(r"^\s+folder:\s*(.+)$", line)
+        if not m:
+            continue
+        e = m.group(1).split("<")[0].strip().rstrip("/")  # <JJJJ> weg
+        if e and not e.startswith("("):
+            stems.append(e.split("/")[0])
+    return stems
 
 
 def process_all(input_dir: Path, cfg: dict, model: str, dry_run: bool) -> None:

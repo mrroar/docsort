@@ -45,7 +45,3 @@ category in this list wins.
 - id: weg
   folder: WEG
   keywords: WEG, Eigentümerversammlung, Hausverwalter, HKV
-
-- id: unsicher
-  folder: (leave in place, no routing)
-  keywords: none – fallback only
