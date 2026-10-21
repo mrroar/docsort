@@ -227,8 +227,6 @@ def load_context() -> str:
 
 
 def load_categories() -> list[str]:
-    """Parst alle Kategorie-IDs (- id: ...) aus der Knowledge-Datei.
-    Waechst die Taxonomie, waechst das Harness ohne Codeaenderung mit."""
     text = KNOWLEDGE_FILE.read_text(encoding="utf-8")
     return re.findall(r"^- id:\s*(\S+)", text, re.MULTILINE)
 
@@ -327,12 +325,10 @@ def human_in_the_loop(result: dict, path: Path, categories: list[str]) -> dict:
             "manual": True}
 
 def load_target_stems() -> list[str]:
-    """Parst alle zulaessigen Zielordner-Staemme aus der Knowledge.
-    System-Ordner (CAT-01) sind NIE Routing-Ziele (Rule N3)."""
     text = KNOWLEDGE_FILE.read_text(encoding="utf-8")
-    stems = re.findall(r"^- target_path:\s*`([^`<]+)", text, re.MULTILINE)
-    return [s.strip().rstrip("/") for s in stems
-            if not s.strip().startswith("Automator-")]
+    stems = re.findall(r"^\s+folder:\s*(\S+)", text, re.MULTILINE)
+    return [s.rstrip("/").split("/")[0] for s in stems
+            if not s.startswith("(")]  # unsicher hat keinen Ordner
 
 
 def process_all(input_dir: Path, cfg: dict, model: str, dry_run: bool) -> None:
