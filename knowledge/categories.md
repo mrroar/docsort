@@ -21,6 +21,10 @@ category in this list wins.
   keywords: Quittung, Beleg, Rechnung, Kaufbeleg, Rentenbescheid,
   Renteninformation, Deutsche Rentenversicherung
 
+- id: documentation
+  folder: Sach-Dokumentation-nurDigital
+  keywords: Handbuch, Anleitung, Bedienung, Fehler, Instructions
+
 - id: contracts
   folder: Vertraege-und-Kuendigungen/<Person-Unternehmen>
   keywords: Vertrag, Kündigung, Police, Versicherungsschein,
@@ -45,3 +49,4 @@ category in this list wins.
 - id: weg
   folder: WEG
   keywords: WEG, Eigentümerversammlung, Hausverwalter, HKV
+
