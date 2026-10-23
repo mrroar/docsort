@@ -23,7 +23,7 @@ category in this list wins.
 
 - id: documentation
   folder: Sach-Dokumentation-nurDigital
-  keywords: Handbuch, Anleitung, Bedienung, Fehler, Instructions
+  keywords: Handbuch, Anleitung, Bedienung, Fehler, Instructions, Manual
 
 - id: contracts
   folder: Vertraege-und-Kuendigungen/<Person-Unternehmen>
