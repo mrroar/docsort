@@ -28,15 +28,16 @@ category in this list wins.
 - id: contracts
   folder: Vertraege-und-Kuendigungen/<Person-Unternehmen>
   keywords: Vertrag, Kündigung, Police, Versicherungsschein,
-  Arbeitsvertrag, Tarifvertrag, Nachlass, Erbschaft
+  Arbeitsvertrag, Tarifvertrag, Nachlass, Erbschaft, contract,
+  policy, termination, employment contract, estate, inheritance
 
 - id: mile
   folder: Mile
-  keywords: Mile, Hund, Tierarzt, Hundesteuer
+  keywords: Mile, Hund, Tierarzt, Hundesteuer, veterinary, vet, dog tax
 
 - id: auto
   folder: Auto
-  keywords: Fahrzeug, Kfz, Werkstatt, TÜV, Zulassung, Audi TT, Caddy
+  keywords: Fahrzeug, Kfz, Werkstatt, TÜV, Zulassung, Audi TT, Caddy, car, garage, registration
 
 - id: medical
   folder: Arztsachen
